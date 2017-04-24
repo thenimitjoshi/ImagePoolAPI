@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ImagePool.Models;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -16,6 +17,10 @@ namespace ImagePool.Controllers
     {
         #region Variables
         HttpResponseMessage response = new HttpResponseMessage();
+        /// <summary>
+        /// get and set error object
+        /// </summary>
+        public object ResponseObject { get; protected set; }
         #endregion
 
         #region Public Methods
@@ -120,6 +125,33 @@ namespace ImagePool.Controllers
         }
         #endregion
 
+        #region TodaysLineUp
+        [HttpGet, ActionName("TodaysLineUp")]
+        public HttpResponseMessage TodaysLineUp(string offset)
+        {            
+            try
+            {
+                var todaysLineUpListResponse = GetTodaysLineUpList(null);
+
+                if (todaysLineUpListResponse != null)
+                {
+                    ResponseObject = new ResponseObj(Convert.ToInt32(ConstantAndEnum.Status.Ok), Convert.ToInt32(ConstantAndEnum.ErrorCode.General), null);
+                    response = Request.CreateResponse(HttpStatusCode.OK, new { ResponseObject, todaysLineUpListResponse });
+                }
+                else
+                {
+                    response = Request.CreateResponse(HttpStatusCode.OK, todaysLineUpListResponse);
+                }
+            }
+            catch (Exception ex)
+            {
+                response = Request.CreateResponse(HttpStatusCode.OK, ex.Message);
+
+            }
+            return response;
+        }
+        #endregion
+
         #region Private Methods
         /// <summary>
         /// This method is created to compress the image.
@@ -177,6 +209,122 @@ namespace ImagePool.Controllers
             {
                 return result;
             }
+        }
+
+        /// <summary>
+        /// This method is created to get today's lineup list.
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <returns>It will return all leagues and games details in todays lineup list.</returns>
+        protected Dictionary<string, Dictionary<string, LeagueInfo>> GetTodaysLineUpList(string offset)
+        {
+            Dictionary<string, List<TodaysLineUp>> objTodaysLineupList = null;
+            List<TodaysLineUp> objTodaysLineUpForLive = new List<TodaysLineUp>();
+            List<TodaysLineUp> objTodaysLineUpForLater = new List<TodaysLineUp>();
+            Dictionary<string, LeagueInfo> liveLeagueInfo = new Dictionary<string, LeagueInfo>();
+            Dictionary<string, LeagueInfo> laterLeagueInfo = new Dictionary<string, LeagueInfo>();
+            List<string> leagueNameList = new List<string>();
+            Dictionary<string, Dictionary<string, LeagueInfo>> leagueInfo = new Dictionary<string, Dictionary<string, LeagueInfo>>();
+
+            try
+            {
+                //getting data
+                objTodaysLineupList = new TodaysLineUpDal().GetTodaysLineUpList(offset);
+                //getting Live Section Data
+                objTodaysLineupList.TryGetValue("Live", out objTodaysLineUpForLive);
+                ///getting Later Section Data
+                objTodaysLineupList.TryGetValue("Later", out objTodaysLineUpForLater);
+
+                //Check if Live Section Data is available
+                if (!object.Equals(objTodaysLineUpForLive, null))
+                {
+                    if (objTodaysLineUpForLive.Count > 0)
+                    {
+                        leagueNameList = objTodaysLineUpForLive.Select(s => s.GameTypeName).Distinct().ToList();
+
+                        if (leagueNameList.Count > 0)
+                        {
+                            foreach (var leagueName in leagueNameList)
+                            {
+                                var teams = new List<TeamInfo>();
+                                List<TeamInfo> teamDetailList = new List<TeamInfo>();
+
+                                var leagueDetailList = (from x in objTodaysLineUpForLive where x.GameTypeName == leagueName select x).ToList();
+                                foreach (var leagueDetail in leagueDetailList)
+                                {
+                                    var team = new TeamInfo();
+                                    team.GameScheduleID = leagueDetail.GameScheduleID;
+                                    team.AwayTeamId = leagueDetail.AwayTeamId;
+                                    team.AwayTeamLogoUrl = leagueDetail.AwayTeamLogoUrl;
+                                    team.AwayTeamName = leagueDetail.AwayTeamName;
+                                    team.AwayTeamUrl = leagueDetail.AwayTeamUrl;
+                                    team.HomeTeamID = leagueDetail.HomeTeamID;
+                                    team.HomeTeamLogoUrl = leagueDetail.HomeTeamLogoUrl;
+                                    team.HomeTeamName = leagueDetail.HomeTeamName;
+                                    team.HomeTeamUrl = leagueDetail.HomeTeamUrl;
+                                    team.Network = leagueDetail.Network;
+                                    team.StartTime = leagueDetail.StartTime;
+                                    team.EndTime = leagueDetail.EndTime;
+                                    team.TotalCastersCount = leagueDetail.LeagueTotalCastersCount;
+                                    //team.CasterList = casterDAL.GetPublicGameCastersList(1, 0);
+                                    teams.Add(team);
+                                }
+                                teamDetailList.AddRange(teams);
+
+                                liveLeagueInfo.Add(leagueName, new LeagueInfo { League = new League { LeagueName = leagueName, LeagueTotalListenersCount = objTodaysLineUpForLive.Select(s => s.LeagueTotalListenersCount).FirstOrDefault(), LeagueURL = objTodaysLineUpForLive.Select(s => s.GameTypeURL).FirstOrDefault() }, Teams = teamDetailList });
+                            }
+                            leagueInfo.Add("Live", liveLeagueInfo);
+                        }
+                    }
+                }
+
+                //Checking if Later Section Data is available
+                if (!object.Equals(objTodaysLineUpForLater, null))
+                {
+                    if (objTodaysLineUpForLater.Count > 0)
+                    {
+                        leagueNameList = objTodaysLineUpForLater.Select(s => s.GameTypeName).Distinct().ToList();
+
+                        if (leagueNameList.Count > 0)
+                        {
+                            foreach (var leagueName in leagueNameList)
+                            {
+                                var teams = new List<TeamInfo>();
+                                List<TeamInfo> teamDetailList = new List<TeamInfo>();
+
+                                var leagueDetailList = (from x in objTodaysLineUpForLater where x.GameTypeName == leagueName select x).ToList();
+                                foreach (var leagueDetail in leagueDetailList)
+                                {
+                                    var team = new TeamInfo();
+                                    team.GameScheduleID = leagueDetail.GameScheduleID;
+                                    team.AwayTeamId = leagueDetail.AwayTeamId;
+                                    team.AwayTeamLogoUrl = leagueDetail.AwayTeamLogoUrl;
+                                    team.AwayTeamName = leagueDetail.AwayTeamName;
+                                    team.AwayTeamUrl = leagueDetail.AwayTeamUrl;
+                                    team.HomeTeamID = leagueDetail.HomeTeamID;
+                                    team.HomeTeamLogoUrl = leagueDetail.HomeTeamLogoUrl;
+                                    team.HomeTeamName = leagueDetail.HomeTeamName;
+                                    team.HomeTeamUrl = leagueDetail.HomeTeamUrl;
+                                    team.Network = leagueDetail.Network;
+                                    team.StartTime = leagueDetail.StartTime;
+                                    team.EndTime = leagueDetail.EndTime;
+                                    team.TotalCastersCount = leagueDetail.LeagueTotalCastersCount;
+                                    teams.Add(team);
+                                }
+                                teamDetailList.AddRange(teams);
+
+                                laterLeagueInfo.Add(leagueName, new LeagueInfo { League = new League { LeagueName = leagueName, LeagueTotalListenersCount = objTodaysLineUpForLater.Select(s => s.LeagueTotalListenersCount).FirstOrDefault(), LeagueURL = objTodaysLineUpForLater.Select(s => s.GameTypeURL).FirstOrDefault() }, Teams = teamDetailList });
+                            }
+                            leagueInfo.Add("Later", laterLeagueInfo);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+            return leagueInfo;
         }
         #endregion
     }
