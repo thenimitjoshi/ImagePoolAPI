@@ -123,34 +123,7 @@ namespace ImagePool.Controllers
             }
             return response;
         }
-        #endregion
-
-        #region TodaysLineUp
-        [HttpGet, ActionName("TodaysLineUp")]
-        public HttpResponseMessage TodaysLineUp(string offset)
-        {            
-            try
-            {
-                var todaysLineUpListResponse = GetTodaysLineUpList(null);
-
-                if (todaysLineUpListResponse != null)
-                {
-                    ResponseObject = new ResponseObj(Convert.ToInt32(ConstantAndEnum.Status.Ok), Convert.ToInt32(ConstantAndEnum.ErrorCode.General), null);
-                    response = Request.CreateResponse(HttpStatusCode.OK, new { ResponseObject, todaysLineUpListResponse });
-                }
-                else
-                {
-                    response = Request.CreateResponse(HttpStatusCode.OK, todaysLineUpListResponse);
-                }
-            }
-            catch (Exception ex)
-            {
-                response = Request.CreateResponse(HttpStatusCode.OK, ex.Message);
-
-            }
-            return response;
-        }
-        #endregion
+        #endregion        
 
         #region Private Methods
         /// <summary>
